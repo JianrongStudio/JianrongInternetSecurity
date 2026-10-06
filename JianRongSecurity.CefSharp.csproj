@@ -1,0 +1,85 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- Win7 SP1 ~ Win11 兼容目标：net6.0 是最后支持 Win7 SP1 的 .NET 版本线 -->
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!-- 本机未装 .NET 6 运行时（仅有 8/10）时，自动向上滚动到更高主版本运行；Win7 上装有 .NET 6 则正常使用 6 -->
+    <RollForward>Major</RollForward>
+    <!--
+      CefSharp.Common 109.1.110 的核心托管 DLL(CefSharp.dll/CefSharp.Core.dll)只发在 lib/net452，
+      而 SDK 默认 assetTargetFallback 从 net461 起、不含 net452，会导致核心 DLL 不被引用
+      （编译报 Cef/CefSettings/BindingOptions/EvaluateScriptAsync 找不到）。
+      这里显式把 net452 加回落退列表，使核心 DLL 参与编译。
+    -->
+    <AssetTargetFallback>net452;net461;net462;net47;net471;net472;net48;net481</AssetTargetFallback>
+    <RootNamespace>JianRongSecurity</RootNamespace>
+    <AssemblyName>JianRongSecurity.CefSharp</AssemblyName>
+    <Version>1.0.3</Version>
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- exe 与窗体/托盘图标：用户指定 C:\Users\Wubinhao\Pictures\EXE.ico，已复制为工程根 App.ico -->
+    <ApplicationIcon>App.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- CefSharp 109.x：Chromium 109 是最后支持 Windows 7 SP1 的版本线；111+ 需要 Win10+ -->
+    <PackageReference Include="CefSharp.WinForms" Version="109.1.110" />
+    <!--
+      显式引用 CefSharp.Common：其核心托管 DLL(CefSharp.dll/CefSharp.Core.dll)
+      仅通过 WinForms 传递时不会被 NuGet 选为 compile 资产，直接引用以补齐 Cef/CefSettings/
+      BindingOptions/EvaluateScriptAsync 等核心类型。
+    -->
+    <PackageReference Include="CefSharp.Common" Version="109.1.110" />
+    <!-- ProcessGuard.cs 通过 WMI(Win32_Process) 取进程命令行，需要 System.Management -->
+    <PackageReference Include="System.Management" Version="6.0.0" />
+  </ItemGroup>
+  <!--
+    CefSharp.Common 109.1.110 没有把核心托管 DLL(CefSharp.dll/CefSharp.Core.dll)通过 NuGet lib
+    自动加为编译引用（包内把它们当 Content/None 处理），导致 Cef/CefSettings/BindingOptions/
+    EvaluateScriptAsync 等核心类型找不到。这里用 HintPath 显式引用这两个 net452 托管程序集；
+    net6.0-windows 可经 .NET Framework 兼容层编译并在 Windows 上运行。
+  -->
+  <ItemGroup>
+    <Reference Include="CefSharp">
+      <HintPath>$(NuGetPackageRoot)cefsharp.common\109.1.110\lib\net452\CefSharp.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="CefSharp.Core">
+      <HintPath>$(NuGetPackageRoot)cefsharp.common\109.1.110\lib\net452\CefSharp.Core.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+  <!--
+    消除 Timer 二义：ImplicitUsings 默认同时拉入 System.Threading 与 System.Windows.Forms，
+    导致引擎文件(ProcessGuard/RealtimeEngine)里的 Timer 在 System.Threading.Timer 与
+    System.Windows.Forms.Timer 之间二义。Engine 下没有任何文件使用 WinForms 托管类型
+    （TrayIcon 走 Win32 P/Invoke），宿主 MainForm/Program 均已显式 using System.Windows.Forms，
+    故这里移除全局隐式 WinForms using，让 Timer 明确解析为 System.Threading.Timer。
+  -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="UI\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 图标复制到输出目录，供 MainForm 运行时加载窗体/托盘图标 -->
+    <Content Include="App.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <!--
+    引擎数据目录（从 WinUI 工程移植，体积小，直接复制到输出）：
+    - rules\：YARA 规则库（897 文件约 4MB），YaraEngine.LoadDirectory 启动时加载
+    - hashdb\sample_hashes.txt：外部哈希黑名单（约 196KB），ScanEngine 启动时惰性加载
+    SevenZip\（7z.exe + 7z.dll 约 2.4MB）按任务要求不复制；ScanEngine 检测到 SevenZip\7z.exe
+    不存在时自动跳过压缩包递归扫描（代码内 if (!File.Exists(SevenZipExe)) return null），不影响主流程。
+    如需压缩包内扫描，手动从 WinUI 工程复制 SevenZip\ 目录到输出目录即可。
+  -->
+  <ItemGroup>
+    <Content Include="rules\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="hashdb\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- CSafe 特征库（BITProtect 黑/白名单 + LSProtect 导入黑名单，提取为 UTF-8 无BOM 文本） -->
+    <Content Include="csafe_db\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 360 云查杀本地种子库（CloudVerdictEngine 在线未配置/失败时的降级判定数据源） -->
+    <Content Include="cloud_seed.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
