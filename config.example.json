@@ -1,0 +1,17 @@
+{
+  "CloudScanEnabled": false,
+  "RealtimeProtectionEnabled": true,
+  "GuideDone": false,
+  "Whitepaths": [],
+  "CloudApiEnabled": false,
+  "CloudApiUrl": "",
+  "CloudApiKey": "",
+  "CloudApiSecret": "",
+  "JinRongApiKey": "",
+  "SystemIntegrityEnabled": true,
+  "RegistryGuardEnabled": true,
+  "ExplorerGuardEnabled": true,
+  "WindowsFileGuardEnabled": true,
+  "SignatureGuardEnabled": true,
+  "BootGuardEnabled": true
+}

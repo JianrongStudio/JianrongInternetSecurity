@@ -1,0 +1,16 @@
+# 构建输出
+bin/
+obj/
+Release/
+Debug/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# 本机配置文件（含真实 API Key / 密钥，禁止入库）
+config.json
+
+# CEF 运行时缓存（约 290MB，不入库）
+cef-cache/
