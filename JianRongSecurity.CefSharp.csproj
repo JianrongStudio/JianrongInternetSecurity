@@ -18,7 +18,7 @@
     <AssetTargetFallback>net452;net461;net462;net47;net471;net472;net48;net481</AssetTargetFallback>
     <RootNamespace>JianRongSecurity</RootNamespace>
     <AssemblyName>JianRongSecurity.CefSharp</AssemblyName>
-    <Version>1.0.3</Version>
+    <Version>2.6.1</Version>
     <PlatformTarget>x64</PlatformTarget>
     <!-- exe 与窗体/托盘图标：用户指定 C:\Users\Wubinhao\Pictures\EXE.ico，已复制为工程根 App.ico -->
     <ApplicationIcon>App.ico</ApplicationIcon>
@@ -34,6 +34,8 @@
     <PackageReference Include="CefSharp.Common" Version="109.1.110" />
     <!-- ProcessGuard.cs 通过 WMI(Win32_Process) 取进程命令行，需要 System.Management -->
     <PackageReference Include="System.Management" Version="6.0.0" />
+    <!-- Driver/DriveLoader.cs 通过 ServiceController 查服务状态，需要 ServiceProcess 包 -->
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="6.0.0" />
   </ItemGroup>
   <!--
     CefSharp.Common 109.1.110 没有把核心托管 DLL(CefSharp.dll/CefSharp.Core.dll)通过 NuGet lib
@@ -70,9 +72,8 @@
     引擎数据目录（从 WinUI 工程移植，体积小，直接复制到输出）：
     - rules\：YARA 规则库（897 文件约 4MB），YaraEngine.LoadDirectory 启动时加载
     - hashdb\sample_hashes.txt：外部哈希黑名单（约 196KB），ScanEngine 启动时惰性加载
-    SevenZip\（7z.exe + 7z.dll 约 2.4MB）按任务要求不复制；ScanEngine 检测到 SevenZip\7z.exe
-    不存在时自动跳过压缩包递归扫描（代码内 if (!File.Exists(SevenZipExe)) return null），不影响主流程。
-    如需压缩包内扫描，手动从 WinUI 工程复制 SevenZip\ 目录到输出目录即可。
+    SevenZip\（7z.exe + 7z.dll 约 2.4MB）：自定义扫描启用压缩包二次解压重扫时使用；
+    实时防护/快速/全盘默认不走 7z（由 ScanEngine.EnableArchiveRecursion 开关控制，默认 false）。
   -->
   <ItemGroup>
     <Content Include="rules\**\*" CopyToOutputDirectory="PreserveNewest" />
@@ -81,5 +82,9 @@
     <Content Include="csafe_db\**\*" CopyToOutputDirectory="PreserveNewest" />
     <!-- 360 云查杀本地种子库（CloudVerdictEngine 在线未配置/失败时的降级判定数据源） -->
     <Content Include="cloud_seed.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 本地 ML 权重文件（MlScanService 加载；删除则自动回退到内置占位权重） -->
+    <Content Include="mlModel.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 7-Zip 解压引擎（自定义扫描压缩包二次解压重扫；实时防护不启用） -->
+    <Content Include="SevenZip\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
